@@ -183,3 +183,5 @@ def get_or_compute(
 		raise TypeError("compute_fn must return an xarray.Dataset")
 	save_to_zarr(dataset, str(path))
 	return dataset
+
+#include config_hash in cache key for better reproducibility

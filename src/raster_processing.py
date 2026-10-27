@@ -10,6 +10,11 @@ import xarray as xr
 from affine import Affine
 from pyproj import CRS
 
+from exceptions import SchemaError
+from logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class AlignmentError(AssertionError):
 	"""Raised when an aligned raster does not match its requested grid."""
@@ -26,7 +31,7 @@ def resampling_for(
 		"continuous",
 		"elevation",
 		"slope",
-		"aspect",
+		"aspect", #instead use sin(aspect) and cos(aspect) because it is a circular variable
 		"tpi",
 		"twi",
 		"solar",
@@ -43,6 +48,53 @@ def resampling_for(
 
 def _transforms_match(actual: Affine, expected: Affine) -> bool:
 	return bool(np.allclose(tuple(actual), tuple(expected)))
+
+
+def load_grid(
+	source: str | Path | xr.DataArray | xr.Dataset,
+	city: str | None = None,
+) -> xr.DataArray | xr.Dataset:
+	"""Load a raster or dataset while preserving canonical grid metadata.
+
+	Args:
+		source: File path or in-memory xarray object.
+		city: Optional city key used to label metadata.
+
+	Returns:
+		The loaded grid object.
+	"""
+	if isinstance(source, (str, Path)):
+		if source.lower().endswith(".zarr"):
+			loaded = xr.open_dataset(source, engine="zarr")
+		else:
+			loaded = rioxarray.open_rasterio(source)
+		if city is not None:
+			loaded.attrs["city"] = city
+		return loaded
+	if isinstance(source, (xr.DataArray, xr.Dataset)):
+		if city is not None:
+			source.attrs["city"] = city
+		return source
+	raise TypeError("source must be a file path or xarray object")
+
+
+def load_terrain_stack(
+	source: str | Path | xr.Dataset,
+) -> xr.Dataset:
+	"""Load an in-memory or Zarr terrain-feature stack.
+
+	Args:
+		source: Terrain Dataset or path to a Zarr dataset.
+
+	Returns:
+		The loaded terrain feature Dataset.
+	"""
+	loaded = load_grid(source)
+	if not isinstance(loaded, xr.Dataset):
+		message = "Terrain stack source must be an xarray.Dataset."
+		logger.error(message)
+		raise SchemaError(message)
+	return loaded
 
 
 def load_and_align(

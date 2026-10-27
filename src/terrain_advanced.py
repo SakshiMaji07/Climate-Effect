@@ -55,7 +55,6 @@ def compute_tpi(
 	dem: xr.DataArray, scales_m: list[float], mask_edges: bool = False
 ) -> xr.Dataset:
 	"""Compute nodata-aware multi-scale TPI using reflected uniform windows.
-
 	Each scale is a map-unit radius converted to pixels from the DEM
 	resolution. A window containing any nodata is nodata; with ``mask_edges``
 	enabled, the corresponding radius-wide border is also nulled.
